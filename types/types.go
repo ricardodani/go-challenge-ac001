@@ -7,3 +7,7 @@ type City struct {
 }
 
 type Cities []City
+
+type Path struct {
+	Path []int64 `json:path,omitempty`
+}

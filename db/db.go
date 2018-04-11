@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -17,8 +16,31 @@ func InitDatabase(databaseName string) error {
 		return err
 	}
 	mainDB = db
-	mainDB.Exec("create table if not exists cities (id integer, name text)")
-	mainDB.Exec("create table if not exists borders (from integer, to integer)")
+	_, errCities := mainDB.Exec(
+		"CREATE TABLE IF NOT EXISTS cities (id INTEGER PRIMARY KEY, name TEXT)",
+	)
+	if errCities != nil {
+		return errCities
+	}
+	_, errBorders := mainDB.Exec(
+		"CREATE TABLE IF NOT EXISTS borders (`from` integer, `to` integer)",
+	)
+	return errBorders
+}
+
+func getCityBorders(city *types.City) error {
+	var borders []int64
+	stmt, _ := mainDB.Prepare("SELECT `to` FROM borders WHERE `from` = ?")
+	rows, err := stmt.Query(city.ID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var border int64
+		_ = rows.Scan(&border)
+		borders = append(borders, border)
+	}
+	city.Borders = borders
 	return nil
 }
 
@@ -31,6 +53,12 @@ func GetCities() (types.Cities, error) {
 	for rows.Next() {
 		var city types.City
 		_ = rows.Scan(&city.ID, &city.Name)
+
+		err := getCityBorders(&city)
+		if err != nil {
+			return nil, err
+		}
+
 		cities = append(cities, city)
 	}
 	return cities, nil
@@ -45,6 +73,11 @@ func GetCity(cityId int64) (types.City, error) {
 	}
 	for rows.Next() {
 		_ = rows.Scan(&city.ID, &city.Name)
+
+		err := getCityBorders(&city)
+		if err != nil {
+			return types.City{}, err
+		}
 	}
 	return city, nil
 }
@@ -68,10 +101,11 @@ func UpdateCity(city *types.City) error {
 func InsertCityBorders(city *types.City) error {
 	var borders []int64
 	for _, value := range city.Borders {
-		cityIdStr := strconv.FormatInt(city.ID, 10)
-		valueStr := strconv.FormatInt(value, 10)
-		stmt, _ := mainDB.Prepare("INSERT INTO borders(from, to) values(?, ?)")
-		_, err := stmt.Exec(cityIdStr, valueStr)
+		_, err := mainDB.Exec(
+			"INSERT INTO borders VALUES ($1, $2)",
+			city.ID,
+			value,
+		)
 		if err != nil {
 			return err
 		}
