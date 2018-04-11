@@ -3,7 +3,7 @@ package routes
 import (
 	"github.com/gorilla/mux"
 
-	"gitlab.com/ricardodani/go-challenge-ac001/api"
+	"../api"
 )
 
 func GetRouter() *mux.Router {

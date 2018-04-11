@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"gitlab.com/ricardodani/go-challenge-ac001/types"
+	"../types"
 )
 
 var mainDB *sql.DB

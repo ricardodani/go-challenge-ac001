@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"gitlab.com/ricardodani/go-challenge-ac001/db"
-	"gitlab.com/ricardodani/go-challenge-ac001/routes"
+	"./db"
+	"./routes"
 )
 
 func main() {
@@ -17,5 +17,5 @@ func main() {
 	}
 	router := routes.GetRouter()
 	fmt.Println("Serving at port 3000")
-	log.Fatal(http.ListenAndServe(":3000", router))
+	log.Fatal(http.ListenAndServe(":3001", router))
 }

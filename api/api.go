@@ -7,8 +7,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"gitlab.com/ricardodani/go-challenge-ac001/db"
-	"gitlab.com/ricardodani/go-challenge-ac001/types"
+	"../db"
+	"../types"
 )
 
 func ListCities(w http.ResponseWriter, r *http.Request) {
