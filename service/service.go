@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"../db"
 )
 
@@ -69,10 +71,11 @@ func GetCity(cityId int64) (City, error) {
 
 		err := getCityBorders(&city)
 		if err != nil {
-			return City{}, err
+			return city, err
 		}
+		return city, nil
 	}
-	return city, nil
+	return city, errors.New("City not found")
 }
 
 func CreateCity(city *City) error {
@@ -109,7 +112,7 @@ func InsertCityBorders(city *City) error {
 }
 
 func RemoveCityBorders(city *City) error {
-	stmt, _ := db.DB.Prepare("DELETE FROM borders WHERE from = ?")
+	stmt, _ := db.DB.Prepare("DELETE FROM borders WHERE `from` = ?")
 	_, err := stmt.Exec(city.ID)
 	if err != nil {
 		return err
@@ -127,5 +130,9 @@ func RemoveCity(cityID int64) error {
 
 func RemoveCities() error {
 	_, err := db.DB.Exec("DELETE FROM cities")
-	return err
+	if err != nil {
+		return err
+	}
+	_, errBorders := db.DB.Exec("DELETE FROM borders")
+	return errBorders
 }

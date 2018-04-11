@@ -14,7 +14,6 @@ import (
 
 func checkErr(err error, statusCode int, w http.ResponseWriter) bool {
 	if err != nil {
-		fmt.Println("Checking for errors")
 		log.Println(err)
 		w.WriteHeader(statusCode)
 		return true
@@ -76,7 +75,6 @@ func CreateCity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(201)
 	cityURL := fmt.Sprintf("/city/%d", city.ID)
 	http.Redirect(w, r, cityURL, http.StatusMovedPermanently)
 }
