@@ -52,8 +52,6 @@ func GetCity(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateCity(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	city := service.NewCity()
 	err := json.NewDecoder(r.Body).Decode(&city)
 	if checkErr(err, http.StatusBadRequest, w) {
@@ -76,7 +74,9 @@ func CreateCity(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cityURL := fmt.Sprintf("/city/%d", city.ID)
-	http.Redirect(w, r, cityURL, http.StatusMovedPermanently)
+	w.Header().Set("Location", cityURL)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 }
 
 func UpdateCity(w http.ResponseWriter, r *http.Request) {
@@ -113,8 +113,13 @@ func UpdateCity(w http.ResponseWriter, r *http.Request) {
 	checkErr(err, http.StatusInternalServerError, w)
 }
 
-func RemoveCity(w http.ResponseWriter, r *http.Request) {
+func setJsonContentType(w *http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
+}
+
+func RemoveCity(w http.ResponseWriter, r *http.Request) {
+	// w.Header().Set("Content-Type", "application/json")
+	setJsonContentType(&w)
 
 	params := mux.Vars(r)
 	cityID, err := strconv.ParseInt(params["id"], 10, 0)
@@ -131,7 +136,7 @@ func RemoveCity(w http.ResponseWriter, r *http.Request) {
 }
 
 func RemoveCities(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	setJsonContentType(&w)
 
 	err := service.RemoveCities()
 	if checkErr(err, http.StatusInternalServerError, w) {
@@ -139,4 +144,28 @@ func RemoveCities(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func GetPath(w http.ResponseWriter, r *http.Request) {
+	setJsonContentType(&w)
+
+	params := mux.Vars(r)
+
+	fromID, err := strconv.ParseInt(params["from_id"], 10, 0)
+	if checkErr(err, http.StatusBadRequest, w) {
+		return
+	}
+
+	toID, err := strconv.ParseInt(params["to_id"], 10, 0)
+	if checkErr(err, http.StatusBadRequest, w) {
+		return
+	}
+
+	path, err := service.GetPath(fromId, toId)
+	if checkErr(err, http.StatusInternalServerError, w) {
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(path)
+	checkErr(err, http.StatusInternalServerError, w)
 }

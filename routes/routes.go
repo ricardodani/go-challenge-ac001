@@ -14,6 +14,6 @@ func GetRouter() *mux.Router {
 	router.HandleFunc("/city", api.CreateCity).Methods("POST")
 	router.HandleFunc("/cities", api.ListCities).Methods("GET")
 	router.HandleFunc("/cities", api.RemoveCities).Methods("DELETE")
-	//router.HandleFunc("/city/{from_id}/travel/{to_id}", GetPath).Methods("GET")
+	router.HandleFunc("/city/{from_id}/travel/{to_id}", api.GetPath).Methods("GET")
 	return router
 }
