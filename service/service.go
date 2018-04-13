@@ -171,8 +171,8 @@ func contains(s []int64, e int64) bool {
 
 // Find recursively a valid path and update the given Path pointer
 func findPath(path *Path, start int64, end int64) error {
+	// Warning: in progress! not working yet
 	stmt, _ := db.DB.Prepare("SELECT `to` FROM borders WHERE `from` = ?")
-	time.Sleep(100 * time.Millisecond)
 	rows, err := stmt.Query(start)
 	if err != nil {
 		return err
@@ -187,7 +187,6 @@ func findPath(path *Path, start int64, end int64) error {
 			return nil
 		}
 		if contains(path.Path, border) == false {
-			fmt.Println("entrou")
 			return findPath(path, border, end)
 		}
 	}
