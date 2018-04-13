@@ -12,7 +12,7 @@ import (
 func main() {
 	err := db.InitDatabase("cities.db")
 	if err != nil {
-		log.Fatal("Could not init database")
+		log.Fatal(err)
 		panic(err)
 	}
 	router := routes.GetRouter()

@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"../db"
 )
@@ -17,7 +19,7 @@ type Cities struct {
 }
 
 type Path struct {
-	Path []int64 `json:path,omitempty`
+	Path []int64 `json:"path,omitempty"`
 }
 
 func NewCity() City {
@@ -100,17 +102,28 @@ func UpdateCity(city *City) error {
 	return err
 }
 
-// Insert the `Borders` of a `City` on database
+// Insert the `Borders` of a `City` on database in the two ways
 func InsertCityBorders(city *City) error {
 	var borders []int64
 	for _, value := range city.Borders {
-		_, err := db.DB.Exec(
-			"INSERT INTO borders VALUES ($1, $2)",
+		if value == city.ID {
+			return errors.New("Could not set the City itself as border")
+		}
+		_, errInsert := db.DB.Exec(
+			"INSERT OR IGNORE INTO borders(`from`, `to`) VALUES ($1, $2)",
 			city.ID,
 			value,
 		)
-		if err != nil {
-			return err
+		if errInsert != nil {
+			return errInsert
+		}
+		_, errInsertInverse := db.DB.Exec(
+			"INSERT OR IGNORE INTO borders(`from`, `to`) VALUES ($1, $2)",
+			value,
+			city.ID,
+		)
+		if errInsertInverse != nil {
+			return errInsertInverse
 		}
 		borders = append(borders, value)
 	}
@@ -120,8 +133,8 @@ func InsertCityBorders(city *City) error {
 
 // Remove all `Borders` of a `City` from the database
 func RemoveCityBorders(city *City) error {
-	stmt, _ := db.DB.Prepare("DELETE FROM borders WHERE `from` = ?")
-	_, err := stmt.Exec(city.ID)
+	stmt, _ := db.DB.Prepare("DELETE FROM borders WHERE `from` = ? or `to` = ?")
+	_, err := stmt.Exec(city.ID, city.ID)
 	if err != nil {
 		return err
 	}
@@ -147,26 +160,36 @@ func RemoveCities() error {
 	return errBorders
 }
 
+func contains(s []int64, e int64) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
 // Find recursively a valid path and update the given Path pointer
 func findPath(path *Path, start int64, end int64) error {
 	stmt, _ := db.DB.Prepare("SELECT `to` FROM borders WHERE `from` = ?")
+	time.Sleep(100 * time.Millisecond)
 	rows, err := stmt.Query(start)
 	if err != nil {
 		return err
 	}
-	first := true
 	for rows.Next() {
-		if first {
-			first = false
-			path.Borders = append(path.Borders, start)
-		}
+		path.Path = append(path.Path, start)
+		fmt.Println(path.Path)
 		var border int64
 		_ = rows.Scan(&border)
 		if border == end {
-			path.Borders = append(path.Borders, end)
+			path.Path = append(path.Path, end)
 			return nil
 		}
-		return findPath(path, border, end)
+		if contains(path.Path, border) == false {
+			fmt.Println("entrou")
+			return findPath(path, border, end)
+		}
 	}
 	return errors.New("No path found")
 }
@@ -174,6 +197,7 @@ func findPath(path *Path, start int64, end int64) error {
 // Return a valid Path from a City to another
 func GetPath(fromId int64, toId int64) (Path, error) {
 	var path Path
+	fmt.Println(path.Path, fromId, toId)
 	err := findPath(&path, fromId, toId)
 	if err != nil {
 		return path, err

@@ -15,13 +15,16 @@ func InitDatabase(databaseName string) error {
 	}
 	DB = db
 	_, errCities := DB.Exec(
-		"CREATE TABLE IF NOT EXISTS cities (id INTEGER PRIMARY KEY, name TEXT)",
+		`CREATE TABLE IF NOT EXISTS cities (
+			id INTEGER PRIMARY KEY,
+			name TEXT
+		)`,
 	)
 	if errCities != nil {
 		return errCities
 	}
 	_, errBorders := DB.Exec(
-		"CREATE TABLE IF NOT EXISTS borders (`from` integer, `to` integer)",
+		"CREATE TABLE IF NOT EXISTS borders (`from` INTEGER, `to` INTEGER, UNIQUE(`from`, `to`))",
 	)
 	return errBorders
 }
