@@ -6,10 +6,12 @@ import (
 	"../db"
 )
 
+type Borders []int64
+
 type City struct {
 	ID      int64   `json:"id,omitempty"`
 	Name    string  `json:"name,omitempty"`
-	Borders []int64 `json:"borders,omitempty"`
+	Borders Borders `json:"borders,omitempty"`
 }
 
 type Cities struct {
@@ -17,10 +19,10 @@ type Cities struct {
 }
 
 type Path struct {
-	Path []int64 `json:"path,omitempty"`
+	Path Borders `json:"path,omitempty"`
 }
 
-func intInSlice(a int64, list []int64) bool {
+func intInSlice(a int64, list Borders) bool {
 	for _, b := range list {
 		if b == a {
 			return true
@@ -29,8 +31,8 @@ func intInSlice(a int64, list []int64) bool {
 	return false
 }
 
-func getCityBorders(city *City, idsToExclude []int64) error {
-	var borders []int64
+func getCityBorders(city *City, idsToExclude Borders) error {
+	var borders Borders
 	stmt, _ := db.DB.Prepare("SELECT `to` FROM borders WHERE `from` = ?")
 	rows, err := stmt.Query(city.ID)
 	if err != nil {
@@ -60,7 +62,7 @@ func GetCities() (Cities, error) {
 		var city City
 		_ = rows.Scan(&city.ID, &city.Name)
 
-		err := getCityBorders(&city, []int64{})
+		err := getCityBorders(&city, Borders{})
 		if err != nil {
 			return cities, err
 		}
@@ -82,7 +84,7 @@ func GetCity(cityId int64) (City, error) {
 	for rows.Next() {
 		_ = rows.Scan(&city.ID, &city.Name)
 
-		err := getCityBorders(&city, []int64{})
+		err := getCityBorders(&city, Borders{})
 		if err != nil {
 			return city, err
 		}
@@ -93,7 +95,7 @@ func GetCity(cityId int64) (City, error) {
 
 // Insert the `Borders` of a `City` on database in the two ways
 func insertCityBorders(city *City) error {
-	var borders []int64
+	var borders Borders
 	for _, value := range city.Borders {
 		if value == city.ID {
 			return errors.New("Could not set the City itself as border")
