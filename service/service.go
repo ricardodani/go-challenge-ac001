@@ -228,9 +228,5 @@ func findPath(path Path, fromCityId int64, toCityId int64) (Path, error) {
 
 // Return a valid Path from a City to another
 func GetPath(fromId int64, toId int64) (Path, error) {
-	path, err := findPath(Path{}, fromId, toId)
-	if err != nil {
-		return Path{}, err
-	}
-	return path, nil
+	return findPath(Path{}, fromId, toId)
 }
