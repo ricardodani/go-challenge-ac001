@@ -211,7 +211,7 @@ func findPath(path Path, fromCityId int64, toCityId int64) (Path, error) {
 	}
 
 	for _, border := range fromCity.Borders {
-		if intInSlice(border, path.Path) {
+		if !intInSlice(border, path.Path) {
 			findPath, _ := findPath(path, border, toCityId)
 			if len(findPath.Path) > 0 {
 				return findPath, nil
