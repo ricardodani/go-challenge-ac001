@@ -16,6 +16,6 @@ func main() {
 		panic(err)
 	}
 	router := routes.GetRouter()
-	fmt.Println("Serving at port 3001")
-	log.Fatal(http.ListenAndServe(":3001", router))
+	fmt.Println("Serving at port 3000")
+	log.Fatal(http.ListenAndServe(":3000", router))
 }

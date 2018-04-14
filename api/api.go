@@ -53,18 +53,14 @@ func GetCity(w http.ResponseWriter, r *http.Request) {
 
 func CreateCity(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	city := service.NewCity()
+
+	city := service.City{}
 	err := json.NewDecoder(r.Body).Decode(&city)
 	if checkErr(err, http.StatusBadRequest, w) {
 		return
 	}
 
 	err = service.CreateCity(&city)
-	if checkErr(err, http.StatusInternalServerError, w) {
-		return
-	}
-
-	err = service.InsertCityBorders(&city)
 	if checkErr(err, http.StatusInternalServerError, w) {
 		return
 	}
@@ -82,29 +78,20 @@ func CreateCity(w http.ResponseWriter, r *http.Request) {
 func UpdateCity(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	city := service.NewCity()
-	err := json.NewDecoder(r.Body).Decode(&city)
+	city := service.City{}
+	params := mux.Vars(r)
+	cityID, err := strconv.ParseInt(params["id"], 10, 0)
 	if checkErr(err, http.StatusBadRequest, w) {
 		return
 	}
+	city.ID = cityID
 
-	params := mux.Vars(r)
-	city.ID, err = strconv.ParseInt(params["id"], 10, 0)
+	err = json.NewDecoder(r.Body).Decode(&city)
 	if checkErr(err, http.StatusBadRequest, w) {
 		return
 	}
 
 	err = service.UpdateCity(&city)
-	if checkErr(err, http.StatusInternalServerError, w) {
-		return
-	}
-
-	err = service.RemoveCityBorders(&city)
-	if checkErr(err, http.StatusInternalServerError, w) {
-		return
-	}
-
-	err = service.InsertCityBorders(&city)
 	if checkErr(err, http.StatusInternalServerError, w) {
 		return
 	}

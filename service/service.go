@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 
 	"../db"
 )
@@ -21,22 +20,29 @@ type Path struct {
 	Path []int64 `json:"path,omitempty"`
 }
 
-func NewCity() City {
-	var city City
-	return city
+func intInSlice(a int64, list []int64) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
-func getCityBorders(city *City) error {
+func getCityBorders(city *City, idsToExclude []int64) error {
 	var borders []int64
 	stmt, _ := db.DB.Prepare("SELECT `to` FROM borders WHERE `from` = ?")
 	rows, err := stmt.Query(city.ID)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var border int64
 		_ = rows.Scan(&border)
-		borders = append(borders, border)
+		if !intInSlice(border, idsToExclude) {
+			borders = append(borders, border)
+		}
 	}
 	city.Borders = borders
 	return nil
@@ -49,11 +55,12 @@ func GetCities() (Cities, error) {
 	if err != nil {
 		return cities, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var city City
 		_ = rows.Scan(&city.ID, &city.Name)
 
-		err := getCityBorders(&city)
+		err := getCityBorders(&city, []int64{})
 		if err != nil {
 			return cities, err
 		}
@@ -71,10 +78,11 @@ func GetCity(cityId int64) (City, error) {
 	if err != nil {
 		return city, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		_ = rows.Scan(&city.ID, &city.Name)
 
-		err := getCityBorders(&city)
+		err := getCityBorders(&city, []int64{})
 		if err != nil {
 			return city, err
 		}
@@ -83,26 +91,8 @@ func GetCity(cityId int64) (City, error) {
 	return city, errors.New("City not found")
 }
 
-// Create a `City` object on database
-func CreateCity(city *City) error {
-	stmt, _ := db.DB.Prepare("INSERT INTO cities(name) values (?)")
-	result, err := stmt.Exec(city.Name)
-	if err != nil {
-		return err
-	}
-	city.ID, _ = result.LastInsertId()
-	return nil
-}
-
-// Update a `City` object on database
-func UpdateCity(city *City) error {
-	stmt, _ := db.DB.Prepare("UPDATE cities SET name = ? WHERE id = ?")
-	_, err := stmt.Exec(city.Name, city.ID)
-	return err
-}
-
 // Insert the `Borders` of a `City` on database in the two ways
-func InsertCityBorders(city *City) error {
+func insertCityBorders(city *City) error {
 	var borders []int64
 	for _, value := range city.Borders {
 		if value == city.ID {
@@ -130,27 +120,74 @@ func InsertCityBorders(city *City) error {
 	return nil
 }
 
-// Remove all `Borders` of a `City` from the database
-func RemoveCityBorders(city *City) error {
-	stmt, _ := db.DB.Prepare("DELETE FROM borders WHERE `from` = ? or `to` = ?")
-	_, err := stmt.Exec(city.ID, city.ID)
+func validateCity(city *City) error {
+	if city.Name == "" {
+		return errors.New("Empty city name")
+	}
+	return nil
+}
+
+// Create a `City` object on database
+func CreateCity(city *City) error {
+	err := validateCity(city)
 	if err != nil {
 		return err
 	}
-	var borders []int64
-	city.Borders = borders
-	return nil
+	stmt, _ := db.DB.Prepare("INSERT INTO cities(name) values (?)")
+	result, err := stmt.Exec(city.Name)
+	defer stmt.Close()
+	if err != nil {
+		return err
+	}
+	city.ID, err = result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	return insertCityBorders(city)
+}
+
+// Remove all `Borders` of a `City` from the database
+func removeCityBorders(cityID int64) error {
+	stmt, _ := db.DB.Prepare("DELETE FROM borders WHERE `from` = ? or `to` = ?")
+	_, err := stmt.Exec(cityID, cityID)
+	defer stmt.Close()
+	return err
+}
+
+// Update a `City` object on database
+func UpdateCity(city *City) error {
+	err := validateCity(city)
+	if err != nil {
+		return err
+	}
+	stmt, _ := db.DB.Prepare("UPDATE cities SET name = ? WHERE id = ?")
+	_, err = stmt.Exec(city.Name, city.ID)
+	defer stmt.Close()
+	if err != nil {
+		return err
+	}
+	err = removeCityBorders(city.ID)
+	if err != nil {
+		return err
+	}
+	err = insertCityBorders(city)
+	return err
 }
 
 // Remove a specific `City` given the id
 func RemoveCity(cityID int64) error {
 	stmt, _ := db.DB.Prepare("DELETE FROM cities WHERE id = ?")
 	_, err := stmt.Exec(cityID)
-	return err
+	defer stmt.Close()
+	if err != nil {
+		return err
+	}
+	return removeCityBorders(cityID)
 }
 
 // Remove all city and border data from database
 func RemoveCities() error {
+	defer db.DB.Close()
 	_, err := db.DB.Exec("DELETE FROM cities")
 	if err != nil {
 		return err
@@ -159,46 +196,37 @@ func RemoveCities() error {
 	return errBorders
 }
 
-func contains(s []int64, e int64) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
-
-// Find recursively a valid path and update the given Path pointer
-func findPath(path *Path, start int64, end int64) error {
-	// Warning: in progress! not working yet
-	stmt, _ := db.DB.Prepare("SELECT `to` FROM borders WHERE `from` = ?")
-	rows, err := stmt.Query(start)
+// Find recursively a `Path` to a city and return it when found
+func findPath(path Path, fromCityId int64, toCityId int64) (Path, error) {
+	path.Path = append(path.Path, fromCityId)
+	fromCity := City{ID: fromCityId}
+	err := getCityBorders(&fromCity, path.Path)
 	if err != nil {
-		return err
+		return Path{}, errors.New("Could not fetch city borders")
 	}
-	for rows.Next() {
-		path.Path = append(path.Path, start)
-		fmt.Println(path.Path)
-		var border int64
-		_ = rows.Scan(&border)
-		if border == end {
-			path.Path = append(path.Path, end)
-			return nil
-		}
-		if contains(path.Path, border) == false {
-			return findPath(path, border, end)
+
+	if intInSlice(toCityId, fromCity.Borders) {
+		path.Path = append(path.Path, toCityId)
+		return path, nil
+	}
+
+	for _, border := range fromCity.Borders {
+		if intInSlice(border, path.Path) {
+			findPath, err := findPath(path, border, toCityId)
+			if err == nil {
+				return findPath, nil
+			}
 		}
 	}
-	return errors.New("No path found")
+
+	lenPath := len(path.Path)
+	if lenPath > 0 && path.Path[lenPath-1] != toCityId {
+		return Path{}, errors.New("Path not found")
+	}
+	return path, nil
 }
 
 // Return a valid Path from a City to another
 func GetPath(fromId int64, toId int64) (Path, error) {
-	var path Path
-	fmt.Println(path.Path, fromId, toId)
-	err := findPath(&path, fromId, toId)
-	if err != nil {
-		return path, err
-	}
-	return path, nil
+	return findPath(Path{}, fromId, toId)
 }
