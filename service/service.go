@@ -72,7 +72,7 @@ func GetCities() (Cities, error) {
 
 // Get a `City` object from database using `id`
 func GetCity(cityId int64) (City, error) {
-	stmt, _ := db.DB.Prepare("SELECT * FROM cities where id = ?")
+	stmt, _ := db.DB.Prepare("SELECT * FROM cities WHERE `id` = ?")
 	rows, err := stmt.Query(cityId)
 	var city City
 	if err != nil {
@@ -212,8 +212,8 @@ func findPath(path Path, fromCityId int64, toCityId int64) (Path, error) {
 
 	for _, border := range fromCity.Borders {
 		if intInSlice(border, path.Path) {
-			findPath, err := findPath(path, border, toCityId)
-			if err == nil {
+			findPath, _ := findPath(path, border, toCityId)
+			if len(findPath.Path) > 0 {
 				return findPath, nil
 			}
 		}
@@ -228,5 +228,9 @@ func findPath(path Path, fromCityId int64, toCityId int64) (Path, error) {
 
 // Return a valid Path from a City to another
 func GetPath(fromId int64, toId int64) (Path, error) {
-	return findPath(Path{}, fromId, toId)
+	path, err := findPath(Path{}, fromId, toId)
+	if err != nil {
+		return Path{}, err
+	}
+	return path, nil
 }

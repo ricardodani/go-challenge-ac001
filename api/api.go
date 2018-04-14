@@ -149,7 +149,7 @@ func GetPath(w http.ResponseWriter, r *http.Request) {
 	}
 
 	path, err := service.GetPath(fromID, toID)
-	if checkErr(err, http.StatusInternalServerError, w) {
+	if checkErr(err, http.StatusNotFound, w) {
 		return
 	}
 
